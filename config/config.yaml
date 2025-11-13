@@ -1,0 +1,70 @@
+project:
+  name: "CDER GraphRAG"
+  version: "1.0.0"
+  description: "Hybrid RAG system for Parallel and Distributed Computing Education"
+
+documents:
+  source_dir: "./data/cder_chapters"
+  supported_formats: ["pdf", "docx"]
+  total_chapters: 10
+
+processing:
+  chunk_size: 512
+  chunk_overlap: 50
+  batch_size: 10
+
+embeddings:
+  provider: "openai"  # or "sentence-transformers"
+  model: "text-embedding-3-small"
+  dimensions: 1536
+  cache_embeddings: true
+
+graph_database:
+  provider: "neo4j"
+  aura_enabled: true
+  create_indexes: true
+  entity_extraction_enabled: true
+
+vector_database:
+  provider: "chromadb"
+  persist_enabled: true
+  similarity_threshold: 0.5
+
+retrieval:
+  modes: ["no-rag", "vector-only", "graph-only", "hybrid"]
+  default_mode: "hybrid"
+  
+  vector_config:
+    top_k: 5
+    similarity_metric: "cosine"
+  
+  graph_config:
+    max_hops: 2
+    include_similar_chunks: true
+  
+  hybrid_config:
+    vector_weight: 0.6
+    graph_weight: 0.4
+    fusion_strategy: "ranked_union"
+
+llm:
+  provider: "openai"
+  model: "gpt-4"
+  temperature: 0.3
+  max_tokens: 300
+  top_p: 0.9
+  
+  system_prompt: |
+    You are an expert teaching assistant for Parallel and Distributed Computing.
+    Answer questions based ONLY on the provided context from CDER curriculum.
+    If information is insufficient, acknowledge the limitation.
+    Always cite specific document sections in your answer.
+
+evaluation:
+  metrics:
+    - accuracy
+    - hallucination_rate
+    - context_coverage
+    - response_latency
+    - citation_correctness
+

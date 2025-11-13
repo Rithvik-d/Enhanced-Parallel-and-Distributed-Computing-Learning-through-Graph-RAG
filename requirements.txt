@@ -1,0 +1,45 @@
+# Core LangChain and LLM
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langchain-community>=0.0.20
+langgraph>=0.0.20
+
+# Graph Database
+neo4j>=5.0.0
+
+# Vector Database
+chromadb>=0.3.0
+
+# OpenAI
+openai>=1.0.0
+
+# Embeddings
+sentence-transformers>=2.2.0
+
+# Search and Utilities
+faiss-cpu>=1.7.4
+tiktoken>=0.5.0
+
+# Document Processing
+pypdf>=3.17.0
+python-docx>=1.1.0
+
+# Data Processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Configuration
+python-dotenv>=1.0.0
+pyyaml>=6.0.1
+pydantic>=2.0.0
+
+# Development
+jupyter>=1.0.0
+ipython>=8.0.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
+
+# Utilities
+requests>=2.31.0
+tenacity>=8.2.0
+
