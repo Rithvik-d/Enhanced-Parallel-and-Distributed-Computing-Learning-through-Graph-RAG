@@ -72,3 +72,6 @@ htmlcov/
 *.bak
 *.cache
 
+# External projects
+meal-planner-graphrag/
+
