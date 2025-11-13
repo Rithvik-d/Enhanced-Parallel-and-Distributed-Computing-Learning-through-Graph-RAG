@@ -70,17 +70,24 @@ class CDERChatbot:
             api_key=self.runtime_config['openai_api_key']
         )
         
-        # Graph database
-        self.graph_manager = GraphDBManager(
-            uri=self.runtime_config['neo4j_uri'],
-            user=self.runtime_config['neo4j_user'],
-            password=self.runtime_config['neo4j_password'],
-            database=self.runtime_config['neo4j_database']
-        )
-        
-        # Create graph schema
-        if self.config.graph_database.create_indexes:
-            self.graph_manager.create_schema()
+        # Graph database (optional - system can work without it)
+        self.graph_manager = None
+        try:
+            self.graph_manager = GraphDBManager(
+                uri=self.runtime_config['neo4j_uri'],
+                user=self.runtime_config['neo4j_user'],
+                password=self.runtime_config['neo4j_password'],
+                database=self.runtime_config['neo4j_database']
+            )
+            
+            # Create graph schema
+            if self.config.graph_database.create_indexes:
+                self.graph_manager.create_schema()
+            logger.info("Neo4j connected successfully")
+        except Exception as e:
+            logger.warning(f"Neo4j connection failed: {e}")
+            logger.warning("System will work in vector-only mode. Graph and hybrid retrieval will not be available.")
+            logger.warning("To fix: Check Neo4j Aura dashboard and ensure database is active.")
         
         # Entity extractor
         self.entity_extractor = EntityExtractor(
@@ -103,14 +110,18 @@ class CDERChatbot:
             'vector-only': VectorRetriever(
                 self.vector_manager,
                 k=self.config.retrieval.vector_config.top_k
-            ),
-            'graph-only': GraphRetriever(
+            )
+        }
+        
+        # Add graph-based retrievers only if Neo4j is available
+        if self.graph_manager:
+            self.retrievers['graph-only'] = GraphRetriever(
                 self.graph_manager,
                 self.vector_manager,
                 self.llm_interface,
                 hops=self.config.retrieval.graph_config.max_hops
-            ),
-            'hybrid': HybridRetriever(
+            )
+            self.retrievers['hybrid'] = HybridRetriever(
                 self.vector_manager,
                 self.graph_manager,
                 self.llm_interface,
@@ -120,7 +131,8 @@ class CDERChatbot:
                 hops=self.config.retrieval.graph_config.max_hops,
                 fusion_strategy=self.config.retrieval.hybrid_config.fusion_strategy
             )
-        }
+        else:
+            logger.warning("Graph-only and hybrid retrievers not available (Neo4j not connected)")
         
         # Conversation history
         self.conversation_history: List[Dict[str, Any]] = []
@@ -142,8 +154,13 @@ class CDERChatbot:
         Returns:
             Dictionary with answer and metadata
         """
+        # Fallback to vector-only if requested mode not available
         if retrieval_mode not in self.retrievers:
-            raise ValueError(f"Invalid retrieval mode: {retrieval_mode}")
+            if retrieval_mode in ['graph-only', 'hybrid'] and not self.graph_manager:
+                logger.warning(f"{retrieval_mode} not available (Neo4j not connected). Using vector-only instead.")
+                retrieval_mode = "vector-only"
+            else:
+                raise ValueError(f"Invalid retrieval mode: {retrieval_mode}. Available: {list(self.retrievers.keys())}")
         
         logger.info(f"Processing query with {retrieval_mode} retrieval")
         

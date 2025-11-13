@@ -39,7 +39,11 @@ cder-graphrag/
 ├── artifacts/                # Generated files (embeddings, logs)
 ├── tests/                    # Unit tests
 ├── main.py                   # Entry point
+├── compare_all_modes.py      # Compare all 4 retrieval modes
+├── index_documents.py        # Index documents into vector store
 ├── requirements.txt          # Python dependencies
+├── Dockerfile                # Docker configuration
+├── docker-compose.yml        # Docker Compose setup
 └── README.md                 # This file
 ```
 
@@ -47,46 +51,90 @@ cder-graphrag/
 
 ### Prerequisites
 
-- Python 3.9 or higher
-- Neo4j Aura account (cloud) or local Neo4j instance
+- Docker and Docker Compose (recommended for Neo4j support on Windows)
+- OR Python 3.9+ with virtual environment
+- Neo4j Aura account (cloud) - free tier available
 - OpenAI API key
 
-### Setup
+### Setup with Docker (Recommended)
 
 1. **Clone or download the project**
 
-2. **Create virtual environment**:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. **Install dependencies**:
-```bash
-pip install -r requirements.txt
-```
-
-4. **Configure environment variables**:
-   - Copy `.env.example` to `.env` (or create manually)
-   - Edit `.env` with your credentials:
+2. **Configure environment variables**:
+   - Create `.env` file in project root:
      ```
      NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
      NEO4J_USER=neo4j
      NEO4J_PASSWORD=your-password
+     NEO4J_DATABASE=neo4j
      OPENAI_API_KEY=sk-proj-your-key
      ```
 
-5. **Configure Neo4j**:
-   - **Option 1 (Cloud)**: Create a free Neo4j Aura account at https://neo4j.com/cloud/aura/
-   - **Option 2 (Local)**: Run Neo4j via Docker:
-     ```bash
-     docker run -p 7687:7687 -p 7474:7474 -e NEO4J_AUTH=neo4j/password neo4j:latest
-     ```
+3. **Build Docker image**:
+   ```powershell
+   docker-compose build
+   ```
 
-6. **Place documents**:
+4. **Place documents**:
    - Add PDF or DOCX files to `data/cder_chapters/`
 
+5. **Index documents**:
+   ```powershell
+   docker-compose run --rm cder-graphrag python index_documents.py
+   ```
+
+6. **Run the system**:
+   ```powershell
+   docker-compose run --rm cder-graphrag python main.py
+   ```
+
+### Setup without Docker (Windows - Vector-Only Mode)
+
+1. **Create virtual environment**:
+   ```powershell
+   python -m venv venv
+   venv\Scripts\activate
+   ```
+
+2. **Install dependencies**:
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+3. **Configure environment variables** (same as Docker setup)
+
+4. **Index documents**:
+   ```powershell
+   python index_documents.py
+   ```
+
+5. **Run the system**:
+   ```powershell
+   python main.py
+   ```
+
+**Note**: Neo4j connection may not work on Windows due to SSL/network issues. Use Docker for full functionality including graph and hybrid retrieval.
+
 ## Usage
+
+### Get All 4 Answers (Recommended)
+
+To see all 4 retrieval modes (No-RAG, Vector-Only, Graph-Only, Hybrid) side by side:
+
+**Using Docker (Neo4j works!):**
+```powershell
+docker-compose run --rm cder-graphrag python compare_all_modes.py "What is parallel computing?"
+```
+
+**Or using main.py:**
+```powershell
+docker-compose run --rm cder-graphrag python main.py --mode all-modes --query "What is parallel computing?"
+```
+
+This will show:
+- All 4 answers with full details
+- Performance metrics (latency, tokens, confidence)
+- Side-by-side comparison table
 
 ### Interactive Mode
 
@@ -121,7 +169,11 @@ python main.py --mode query --query "What is MapReduce?" --retrieval hybrid
 Compare all four retrieval approaches:
 
 ```bash
-python main.py --mode compare --query "Explain parallel algorithms"
+# Using Docker (recommended)
+docker-compose run --rm cder-graphrag python main.py --mode compare --query "Explain parallel algorithms"
+
+# Or get detailed comparison with all 4 answers
+docker-compose run --rm cder-graphrag python compare_all_modes.py "Explain parallel algorithms"
 ```
 
 ## Configuration

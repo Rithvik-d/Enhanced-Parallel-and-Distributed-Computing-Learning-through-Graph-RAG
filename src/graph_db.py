@@ -45,12 +45,26 @@ class GraphDBManager:
         
         # Connect to Neo4j
         try:
-            self.driver = GraphDatabase.driver(uri, auth=(user, password))
+            # For Neo4j Aura, we need to handle SSL properly
+            # The driver should handle SSL automatically for neo4j+s:// URIs
+            self.driver = GraphDatabase.driver(
+                uri, 
+                auth=(user, password),
+                max_connection_lifetime=30 * 60,  # 30 minutes
+                max_connection_pool_size=50,
+                connection_acquisition_timeout=2 * 60,  # 2 minutes
+            )
             # Verify connection
             self.verify_connection()
             logger.info(f"Connected to Neo4j: {uri}")
         except Exception as e:
             logger.error(f"Failed to connect to Neo4j: {e}")
+            # Provide helpful error message
+            if "SSL" in str(e) or "certificate" in str(e).lower():
+                logger.error("SSL certificate issue detected. This might be a network/firewall issue.")
+                logger.error("Try: 1) Check Neo4j Aura dashboard - is database active?")
+                logger.error("     2) Verify URI format: neo4j+s://xxxxx.databases.neo4j.io")
+                logger.error("     3) Check if firewall/proxy is blocking SSL connections")
             raise
     
     def verify_connection(self) -> bool:

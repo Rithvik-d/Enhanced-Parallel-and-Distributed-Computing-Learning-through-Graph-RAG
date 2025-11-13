@@ -32,9 +32,9 @@ def main():
     parser.add_argument(
         '--mode',
         type=str,
-        choices=['interactive', 'query', 'compare'],
+        choices=['interactive', 'query', 'compare', 'all-modes'],
         default='interactive',
-        help='Operation mode'
+        help='Operation mode (all-modes: compare all 4 retrieval approaches)'
     )
     parser.add_argument(
         '--query',
@@ -77,6 +77,18 @@ def main():
             
             results = chatbot.compare_all_retrievals(args.query)
             chatbot._display_comparison(results)
+        
+        elif args.mode == 'all-modes':
+            # All 4 modes comparison with detailed output
+            if not args.query:
+                print("Error: --query required for all-modes")
+                sys.exit(1)
+            
+            # Import and run comparison script
+            from compare_all_modes import main as compare_main
+            import sys as sys_module
+            sys_module.argv = ['compare_all_modes.py', args.query]
+            compare_main()
         
         # Cleanup
         chatbot.close()

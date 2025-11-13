@@ -1,0 +1,19 @@
+services:
+  cder-graphrag:
+    build: .
+    container_name: cder-graphrag
+    volumes:
+      # Mount project directory
+      - .:/app
+      # Persist vector database
+      - ./artifacts/vector_store:/app/artifacts/vector_store
+      # Persist other artifacts
+      - ./artifacts:/app/artifacts
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
