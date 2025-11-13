@@ -1,0 +1,80 @@
+[project]
+# Whether to enable telemetry (default: true). No personal data is collected.
+enable_telemetry = true
+
+# List of environment variables to be provided by each user to use the app.
+user_env = []
+
+# Duration (in seconds) during which the session is saved when the connection is lost
+session_timeout = 3600
+
+# Enable third parties caching (e.g LangChain cache)
+cache = false
+
+# Authorized origins
+[project.allow_origins]
+# origins = ["http://localhost:3000"]
+
+[project.meta]
+generated_by = "2.5.5"
+
+# Duration (in seconds) during which the session is saved when the connection is lost
+session_timeout = 3600
+
+# Enable third parties caching (e.g LangChain cache)
+cache = false
+
+[UI]
+# Name of the app and chatbot.
+name = "CDER GraphRAG Chatbot"
+
+# Show the prompt playground.
+show_prompt_playground = true
+
+# Show the readme while the chat is empty.
+show_readme_as_default = true
+
+# Description of the app and chatbot. This is used for HTML tags.
+description = "Hybrid RAG system for Parallel and Distributed Computing education"
+
+# Large size content are by default collapsed for a cleaner ui
+default_collapse_content = true
+
+# The default value for the expand messages settings.
+default_expand_messages = false
+
+# Hide the chain of thought details from the user in the UI.
+hide_cot = false
+
+# Link to your github repo. This will add a github button in the UI's header.
+# github = "https://github.com/your-repo"
+
+# Specify a CSS file that can be used to customize the user interface.
+# The CSS file can be served from the public folder or via an external link.
+# custom_css = "/public/test.css"
+
+# Specify a Javascript file that can be used to customize the user interface.
+# The JavaScript file can be served from the public folder.
+# custom_js = "/public/test.js"
+
+# Specify a custom font url.
+# custom_font = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap"
+
+# Specify a custom build directory for the frontend.
+# This is useful if you want to use a custom build of the frontend.
+# build_dir = ""
+
+# Override default MUI light theme. (Check theme.ts)
+[UI.theme]
+# [UI.theme.light]
+# background = "#FAFAFA"
+# paper = "#FFFFFF"
+
+# Override default MUI dark theme. (Check theme.ts)
+# [UI.theme.dark]
+# background = "#FAFAFA"
+# paper = "#FFFFFF"
+
+[meta]
+generated_by = "2.5.5"
+

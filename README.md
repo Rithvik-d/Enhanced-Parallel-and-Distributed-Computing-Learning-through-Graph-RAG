@@ -41,6 +41,10 @@ cder-graphrag/
 ├── main.py                   # Entry point
 ├── compare_all_modes.py      # Compare all 4 retrieval modes
 ├── index_documents.py        # Index documents into vector store
+├── frontend/                 # Chainlit web interface
+│   ├── app.py               # Frontend application
+│   ├── chainlit.md          # UI customization
+│   └── .chainlit/           # Chainlit configuration
 ├── requirements.txt          # Python dependencies
 ├── Dockerfile                # Docker configuration
 ├── docker-compose.yml        # Docker Compose setup
@@ -117,7 +121,29 @@ cder-graphrag/
 
 ## Usage
 
-### Get All 4 Answers (Recommended)
+### Web Interface (Recommended) 🎨
+
+Launch the Chainlit web interface to see all 4 responses side by side:
+
+**Using Docker:**
+```powershell
+docker-compose up frontend
+```
+
+**Or locally:**
+```powershell
+chainlit run frontend/app.py
+```
+
+Then open **http://localhost:8000** in your browser.
+
+The web interface displays:
+- All 4 retrieval modes simultaneously
+- Performance metrics for each mode
+- Citations and source information
+- Side-by-side comparison table
+
+### Get All 4 Answers (Command Line)
 
 To see all 4 retrieval modes (No-RAG, Vector-Only, Graph-Only, Hybrid) side by side:
 

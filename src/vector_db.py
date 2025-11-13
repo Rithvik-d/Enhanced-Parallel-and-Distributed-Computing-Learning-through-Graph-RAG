@@ -56,15 +56,63 @@ class VectorDBManager:
             self.persist_dir = None
         
         # Initialize ChromaDB client
-        if self.persist_dir:
-            self.client = chromadb.PersistentClient(
-                path=str(self.persist_dir),
-                settings=Settings(anonymized_telemetry=False)
-            )
-        else:
-            self.client = chromadb.Client(
-                settings=Settings(anonymized_telemetry=False)
-            )
+        # Handle corrupted database by recreating if needed
+        try:
+            if self.persist_dir:
+                # Ensure directory exists
+                self.persist_dir.mkdir(parents=True, exist_ok=True)
+                
+                # Try to initialize ChromaDB
+                try:
+                    self.client = chromadb.PersistentClient(path=str(self.persist_dir))
+                    logger.info(f"ChromaDB initialized with path: {self.persist_dir}")
+                except Exception as e1:
+                    error_msg = str(e1).lower()
+                    # Check if it's a corruption/panic error
+                    if "panic" in error_msg or "corrupt" in error_msg or "range" in error_msg:
+                        logger.warning(f"ChromaDB database appears corrupted: {e1}")
+                        logger.warning("Attempting to reset database...")
+                        # Try to delete and recreate
+                        import shutil
+                        try:
+                            # Backup path
+                            backup_path = Path(str(self.persist_dir) + "_backup")
+                            if self.persist_dir.exists():
+                                if backup_path.exists():
+                                    shutil.rmtree(backup_path)
+                                shutil.move(str(self.persist_dir), str(backup_path))
+                                logger.info(f"Moved corrupted database to: {backup_path}")
+                            # Recreate directory
+                            self.persist_dir.mkdir(parents=True, exist_ok=True)
+                            # Try again
+                            self.client = chromadb.PersistentClient(path=str(self.persist_dir))
+                            logger.info("ChromaDB database recreated successfully")
+                        except Exception as e2:
+                            logger.error(f"Failed to reset ChromaDB database: {e2}")
+                            raise RuntimeError(
+                                f"ChromaDB database is corrupted and could not be reset. "
+                                f"Please manually delete: {self.persist_dir}\n"
+                                f"Original error: {e1}"
+                            )
+                    else:
+                        # Other error - try with settings
+                        logger.warning(f"ChromaDB init failed: {e1}. Trying with settings...")
+                        try:
+                            self.client = chromadb.PersistentClient(
+                                path=str(self.persist_dir),
+                                settings=Settings(allow_reset=True, anonymized_telemetry=False)
+                            )
+                        except Exception as e3:
+                            logger.error(f"All ChromaDB initialization methods failed: {e3}")
+                            raise RuntimeError(f"Failed to initialize ChromaDB: {e3}")
+            else:
+                # Use in-memory client (no tenant needed)
+                self.client = chromadb.Client()
+        except RuntimeError:
+            raise
+        except Exception as e:
+            logger.error(f"ChromaDB initialization failed: {e}")
+            raise
         
         # Initialize embeddings
         self.embeddings = self._initialize_embeddings(api_key)

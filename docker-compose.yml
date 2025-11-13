@@ -17,3 +17,18 @@ services:
     tty: true
     command: /bin/bash
 
+  frontend:
+    build: .
+    container_name: cder-frontend
+    volumes:
+      - .:/app
+      - ./artifacts/vector_store:/app/artifacts/vector_store
+      - ./artifacts:/app/artifacts
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "8000:8000"
+    command: chainlit run frontend/app.py --port 8000 --host 0.0.0.0
+
