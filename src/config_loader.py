@@ -159,6 +159,7 @@ class ConfigLoader:
             'NEO4J_PASSWORD': os.getenv('NEO4J_PASSWORD'),
             'NEO4J_DATABASE': os.getenv('NEO4J_DATABASE', 'neo4j'),
             'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
+            'LLM_PROVIDER': os.getenv('LLM_PROVIDER', 'openai'),  # Default to openai
             'EMBEDDING_PROVIDER': os.getenv('EMBEDDING_PROVIDER'),
             'EMBEDDING_MODEL': os.getenv('EMBEDDING_MODEL'),
             'EMBEDDING_DIMENSIONS': os.getenv('EMBEDDING_DIMENSIONS'),
@@ -193,10 +194,20 @@ class ConfigLoader:
             config['runtime']['neo4j_password'] = self.env_vars.get('NEO4J_PASSWORD', '')
             config['runtime']['neo4j_database'] = self.env_vars.get('NEO4J_DATABASE', 'neo4j')
         
-        # Override OpenAI API key
+        # Override LLM API key (OpenAI)
+        if 'runtime' not in config:
+            config['runtime'] = {}
+        
+        # Get provider from config.yaml first, then env var, then default to openai
+        llm_provider = (
+            config.get('llm', {}).get('provider') or 
+            self.env_vars.get('LLM_PROVIDER') or 
+            'openai'
+        ).lower()
+        config['runtime']['llm_provider'] = llm_provider
+        
         if self.env_vars.get('OPENAI_API_KEY'):
-            if 'runtime' not in config:
-                config['runtime'] = {}
+            config['runtime']['llm_api_key'] = self.env_vars['OPENAI_API_KEY']
             config['runtime']['openai_api_key'] = self.env_vars['OPENAI_API_KEY']
         
         # Override embedding settings
@@ -224,6 +235,8 @@ class ConfigLoader:
             config['retrieval']['hybrid_config']['graph_weight'] = float(self.env_vars['HYBRID_GRAPH_WEIGHT'])
         
         # Override LLM settings
+        if self.env_vars.get('LLM_PROVIDER'):
+            config['llm']['provider'] = self.env_vars['LLM_PROVIDER'].lower()
         if self.env_vars.get('LLM_MODEL'):
             config['llm']['model'] = self.env_vars['LLM_MODEL']
         if self.env_vars.get('LLM_TEMPERATURE'):
@@ -240,11 +253,14 @@ class ConfigLoader:
         Returns:
             Dictionary mapping variable names to whether they're set
         """
+        # Check for OpenAI API key
+        has_openai = self.env_vars.get('OPENAI_API_KEY') is not None
+        
         required_vars = {
             'NEO4J_URI': self.env_vars.get('NEO4J_URI') is not None,
             'NEO4J_USER': self.env_vars.get('NEO4J_USER') is not None,
             'NEO4J_PASSWORD': self.env_vars.get('NEO4J_PASSWORD') is not None,
-            'OPENAI_API_KEY': self.env_vars.get('OPENAI_API_KEY') is not None,
+            'LLM_API_KEY': has_openai,  # OpenAI API key
         }
         
         missing = [var for var, is_set in required_vars.items() if not is_set]
@@ -263,11 +279,21 @@ class ConfigLoader:
         if not self.config:
             raise RuntimeError("Configuration not loaded. Call load() first.")
         
+        # Determine LLM provider and API key
+        # Get provider from config.yaml first, then env var, then default to openai
+        llm_provider = None
+        if hasattr(self, 'config') and self.config and hasattr(self.config, 'llm'):
+            llm_provider = self.config.llm.provider
+        llm_provider = (llm_provider or self.env_vars.get('LLM_PROVIDER') or 'openai').lower()
+        llm_api_key = self.env_vars.get('OPENAI_API_KEY')
+        
         return {
             'neo4j_uri': self.env_vars.get('NEO4J_URI'),
             'neo4j_user': self.env_vars.get('NEO4J_USER'),
             'neo4j_password': self.env_vars.get('NEO4J_PASSWORD'),
             'neo4j_database': self.env_vars.get('NEO4J_DATABASE', 'neo4j'),
-            'openai_api_key': self.env_vars.get('OPENAI_API_KEY'),
+            'openai_api_key': llm_api_key,  # Keep for backward compatibility
+            'llm_api_key': llm_api_key,
+            'llm_provider': llm_provider,
         }
 

@@ -29,12 +29,17 @@ doc_processor = DocumentProcessor(
     chunk_overlap=config.processing.chunk_overlap
 )
 
+# Only pass API key if using OpenAI embeddings
+embedding_api_key = None
+if config.embeddings.provider == "openai":
+    embedding_api_key = runtime_config.get('openai_api_key')
+
 vector_manager = VectorDBManager(
     collection_name="cder_embeddings",
     persist_dir="./artifacts/vector_store",
     embedding_provider=config.embeddings.provider,
     embedding_model=config.embeddings.model,
-    api_key=runtime_config['openai_api_key']
+    api_key=embedding_api_key
 )
 
 print("   [OK] Components initialized\n")

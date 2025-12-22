@@ -201,14 +201,12 @@ class GraphRetriever(Retriever):
         """
         start_time = time.time()
         
-        # Extract entities from query
-        entity_names = self.llm_interface.extract_entities_from_query(query)
-        
-        # Find entity nodes in graph
+        # Find entity nodes in graph (use simple search, no LLM extraction to save API calls)
         entity_ids = self.graph_manager.entity_seed_search(query)
         
-        # Also search for entities by name
-        for entity_name in entity_names:
+        # Also search for simple capitalized terms (heuristic-based, no API call)
+        entity_names = self.llm_interface.extract_entities_from_query(query)
+        for entity_name in entity_names[:3]:  # Limit to first 3 to reduce searches
             additional_ids = self.graph_manager.entity_seed_search(entity_name)
             entity_ids.extend(additional_ids)
         
@@ -231,7 +229,7 @@ class GraphRetriever(Retriever):
         
         # Retrieve chunk texts from vector DB
         contexts = []
-        for chunk_id in chunk_ids[:20]:  # Limit to top 20 chunks
+        for chunk_id in chunk_ids[:10]:  # Reduced to 10 chunks for smaller requests
             chunk_data = self.vector_manager.get_by_id(chunk_id)
             if chunk_data:
                 text = chunk_data['text']
@@ -249,7 +247,7 @@ class GraphRetriever(Retriever):
             'latency_ms': (time.time() - start_time) * 1000,
             'chunks_retrieved': len(contexts),
             'entities_found': len(entity_ids),
-            'chunk_ids': chunk_ids[:20]
+            'chunk_ids': chunk_ids[:10]
         })
         
         logger.info(
@@ -332,7 +330,7 @@ class HybridRetriever(Retriever):
         """
         start_time = time.time()
         
-        # Retrieve from both sources (could be parallelized)
+        # Retrieve from both sources sequentially (to avoid rate limits)
         vector_context = self.vector_retriever.retrieve(query)
         graph_context = self.graph_retriever.retrieve(query)
         

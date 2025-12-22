@@ -5,6 +5,7 @@ Uses LLM to extract entities and relationships from text chunks.
 
 import json
 import hashlib
+import os
 from typing import Dict, List, Optional, Tuple
 import logging
 from functools import lru_cache
@@ -52,7 +53,8 @@ class EntityExtractor:
         self,
         llm_model: str = "gpt-4",
         api_key: Optional[str] = None,
-        temperature: float = 0.1
+        temperature: float = 0.1,
+        provider: str = "openai"
     ):
         """
         Initialize entity extractor.
@@ -61,15 +63,20 @@ class EntityExtractor:
             llm_model: LLM model name
             api_key: OpenAI API key
             temperature: Sampling temperature (low for structured extraction)
+            provider: "openai"
         """
         if not api_key:
-            raise ValueError("OpenAI API key is required")
+            raise ValueError("API key is required")
         
+        self.provider = provider.lower()
+        
+        # Initialize OpenAI LLM
         self.llm = ChatOpenAI(
             model=llm_model,
             temperature=temperature,
             openai_api_key=api_key
         )
+        logger.info(f"Initialized OpenAI entity extractor with model: {llm_model}")
         
         # Create extraction prompts
         self.entity_prompt = self._create_entity_prompt()

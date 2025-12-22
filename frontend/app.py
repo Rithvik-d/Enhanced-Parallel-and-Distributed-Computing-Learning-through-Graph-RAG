@@ -127,8 +127,9 @@ async def on_message(message: cl.Message):
     ).send()
     
     try:
-        # Process through all 4 modes
+        # Process through all 4 modes (each makes exactly 1 API call)
         modes = ['no-rag', 'vector-only', 'graph-only', 'hybrid']
+        logger.info(f"Processing query through {len(modes)} modes (expected {len(modes)} API calls)")
         mode_names = {
             'no-rag': '1️⃣ No-RAG (Baseline)',
             'vector-only': '2️⃣ Vector-Only RAG',
@@ -138,8 +139,34 @@ async def on_message(message: cl.Message):
         
         results = {}
         
-        # Process each mode
-        for mode in modes:
+        # Process each mode with delays to avoid rate limits
+        # Rate limiting: 2 seconds between requests
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        import time as time_module
+        
+        # Simple rate limiter: track last request time
+        last_request_time = [0.0]  # Use list to allow modification in nested scope
+        
+        async def rate_limited_request(mode_idx, mode_name):
+            """Make a rate-limited request with minimum delay between requests."""
+            nonlocal last_request_time
+            min_delay = 2.0  # 2 seconds between requests (OpenAI has better rate limits)
+            
+            if mode_idx > 0:
+                elapsed = time_module.time() - last_request_time[0]
+                if elapsed < min_delay:
+                    wait_time = min_delay - elapsed
+                    logger.info(f"Rate limiting: waiting {wait_time:.1f}s before {mode_name} mode...")
+                    await asyncio.sleep(wait_time)
+            
+            last_request_time[0] = time_module.time()
+        
+        # Run synchronous process_query in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        executor = ThreadPoolExecutor(max_workers=1)  # Process one at a time
+        
+        for idx, mode in enumerate(modes):
             if mode not in chatbot.retrievers:
                 if mode in ['graph-only', 'hybrid'] and not chatbot.graph_manager:
                     results[mode] = {
@@ -156,9 +183,20 @@ async def on_message(message: cl.Message):
                     }
                     continue
             
+            # Apply rate limiting
+            await rate_limited_request(idx, mode)
+            
             try:
-                result = chatbot.process_query(query, retrieval_mode=mode)
+                # Run synchronous call in executor to avoid blocking
+                logger.info(f"Processing {mode} mode...")
+                result = await loop.run_in_executor(
+                    executor, 
+                    chatbot.process_query, 
+                    query, 
+                    mode
+                )
                 results[mode] = result
+                logger.info(f"Completed {mode} mode: answer length={len(result.get('answer', ''))}")
             except Exception as e:
                 logger.error(f"Error processing {mode}: {e}", exc_info=True)
                 results[mode] = {
@@ -167,18 +205,33 @@ async def on_message(message: cl.Message):
                     'citations': []
                 }
         
+        executor.shutdown(wait=False)
+        
         # Remove processing message
-        await processing_msg.remove()
+        try:
+            await processing_msg.remove()
+        except Exception as e:
+            logger.warning(f"Could not remove processing message: {e}")
+        
+        logger.info(f"Processing complete. Results for {len(results)} modes.")
         
         # Display all 4 responses
         for mode in modes:
             if mode not in results:
+                logger.warning(f"Mode {mode} not in results")
                 continue
             
             result = results[mode]
+            logger.info(f"Processing result for {mode}: keys={list(result.keys())}")
             answer = result.get('answer', 'No answer generated')
             metadata = result.get('metadata', {})
-            citations = result.get('citations', [])
+            # Citations are inside metadata, not at top level
+            citations = metadata.get('citations', result.get('citations', []))
+            
+            # Debug: log if answer is empty
+            if not answer or answer.strip() == '':
+                logger.warning(f"Empty answer for {mode}")
+                answer = "No answer generated (empty response)"
             
             retrieval_meta = metadata.get('retrieval', {})
             generation_meta = metadata.get('generation', {})
@@ -213,10 +266,19 @@ async def on_message(message: cl.Message):
             content_parts.append(f"- Confidence: {confidence:.2f}\n")
             
             # Send message for each mode
-            await cl.Message(
-                content="".join(content_parts),
-                author=mode_names.get(mode, mode.upper())
-            ).send()
+            try:
+                await cl.Message(
+                    content="".join(content_parts),
+                    author=mode_names.get(mode, mode.upper())
+                ).send()
+                logger.info(f"Sent message for {mode} mode")
+            except Exception as e:
+                logger.error(f"Error sending message for {mode}: {e}", exc_info=True)
+                # Try sending a simpler message
+                await cl.Message(
+                    content=f"## {mode_names.get(mode, mode.upper())}\n\n**Answer:**\n{answer}",
+                    author=mode_names.get(mode, mode.upper())
+                ).send()
         
         # Send comparison summary
         summary_parts = [
@@ -255,11 +317,30 @@ async def on_message(message: cl.Message):
         
     except Exception as e:
         logger.error(f"Error processing message: {e}", exc_info=True)
-        await processing_msg.remove()
+        try:
+            await processing_msg.remove()
+        except:
+            pass
         await cl.Message(
-            content=f"❌ Error processing query: {str(e)}",
+            content=f"❌ **Error processing query**\n\n**Error**: {str(e)}\n\n**Details**: Check the logs for more information.",
             author="System"
         ).send()
+        
+        # Try to display any results we did get
+        if results:
+            await cl.Message(
+                content=f"⚠️ **Partial Results**\n\nSome modes completed before the error occurred. Check the logs for details.",
+                author="System"
+            ).send()
+            for mode, result in results.items():
+                if result and result.get('answer'):
+                    try:
+                        await cl.Message(
+                            content=f"## {mode_names.get(mode, mode)}\n\n**Answer:**\n{result.get('answer', 'N/A')}",
+                            author=mode_names.get(mode, mode.upper())
+                        ).send()
+                    except Exception as display_error:
+                        logger.error(f"Error displaying {mode} result: {display_error}")
 
 
 @cl.on_chat_end

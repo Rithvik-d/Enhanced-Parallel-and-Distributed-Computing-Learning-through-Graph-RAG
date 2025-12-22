@@ -2,7 +2,40 @@
 
 A hybrid retrieval-augmented generation (RAG) system for educational content, specifically designed for the CDER Parallel and Distributed Computing curriculum. This system integrates Neo4j knowledge graphs with ChromaDB vector databases to provide four different retrieval approaches for question-answering.
 
-## Features
+## 🚀 Quick Start
+
+### With Docker (Recommended)
+
+```bash
+# 1. Create .env file with your API keys
+cp .env.example .env
+# Edit .env with your Neo4j and OpenAI credentials
+
+# 2. Build and start
+docker compose build
+docker compose up frontend -d
+
+# 3. Index documents (first time only)
+docker compose run --rm cder-graphrag python index_documents.py
+
+# 4. Open http://localhost:8000
+```
+
+### Without Docker
+
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Configure .env file
+# 3. Index documents
+python index_documents.py
+
+# 4. Run
+chainlit run frontend/app.py
+```
+
+## ✨ Features
 
 - **Four Retrieval Strategies**:
   - **No-RAG**: Baseline without external retrieval
@@ -12,290 +45,163 @@ A hybrid retrieval-augmented generation (RAG) system for educational content, sp
 
 - **Knowledge Graph**: Neo4j-based graph storing entities, relationships, and document structure
 - **Vector Database**: ChromaDB for efficient similarity search
-- **LLM Integration**: GPT-4 for answer generation and entity extraction
-- **Interactive Chatbot**: Command-line interface for querying
+- **LLM Integration**: OpenAI GPT-3.5-turbo for answer generation
+- **Web Interface**: Chainlit-based interactive UI showing all 4 modes side-by-side
+- **Docker Support**: Easy deployment with Docker Compose
 
-## Project Structure
+## 📋 Requirements
+
+- Docker Desktop (recommended) or Python 3.9+
+- Neo4j Aura account (free tier available)
+- OpenAI API key
+
+## 📁 Project Structure
 
 ```
 cder-graphrag/
 ├── config/
-│   ├── config.yaml          # Main configuration file
-│   └── .env.example          # Environment variables template
+│   └── config.yaml          # Configuration file
 ├── src/
-│   ├── __init__.py
-│   ├── config_loader.py      # Configuration management
-│   ├── logger.py             # Logging setup
-│   ├── doc_processor.py      # Document loading and chunking
+│   ├── chatbot.py            # Main orchestrator
+│   ├── retrievers.py         # Four retrieval strategies
 │   ├── vector_db.py          # ChromaDB operations
 │   ├── graph_db.py           # Neo4j operations
-│   ├── entity_extractor.py   # LLM-based entity extraction
-│   ├── llm_interface.py      # GPT-4 integration
-│   ├── retrievers.py         # Four retrieval strategies
-│   └── chatbot.py            # Main orchestrator
+│   ├── llm_interface.py      # OpenAI integration
+│   └── ...
 ├── data/
-│   └── cder_chapters/        # Place PDF/DOCX files here
-├── notebooks/                # Jupyter notebooks for development
-├── artifacts/                # Generated files (embeddings, logs)
-├── tests/                    # Unit tests
-├── main.py                   # Entry point
-├── compare_all_modes.py      # Compare all 4 retrieval modes
-├── index_documents.py        # Index documents into vector store
-├── frontend/                 # Chainlit web interface
-│   ├── app.py               # Frontend application
-│   ├── chainlit.md          # UI customization
-│   └── .chainlit/           # Chainlit configuration
-├── requirements.txt          # Python dependencies
-├── Dockerfile                # Docker configuration
-├── docker-compose.yml        # Docker Compose setup
-└── README.md                 # This file
+│   └── cder_chapters/        # PDF/DOCX files here
+├── frontend/
+│   └── app.py               # Chainlit web interface
+├── docker-compose.yml
+├── Dockerfile
+└── requirements.txt
 ```
 
-## Installation
+## 🔧 Configuration
 
-### Prerequisites
+### Environment Variables (`.env`)
 
-- Docker and Docker Compose (recommended for Neo4j support on Windows)
-- OR Python 3.9+ with virtual environment
-- Neo4j Aura account (cloud) - free tier available
-- OpenAI API key
+```env
+# Neo4j Configuration
+NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your-password
 
-### Setup with Docker (Recommended)
-
-1. **Clone or download the project**
-
-2. **Configure environment variables**:
-   - Create `.env` file in project root:
-     ```
-     NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
-     NEO4J_USER=neo4j
-     NEO4J_PASSWORD=your-password
-     NEO4J_DATABASE=neo4j
-     OPENAI_API_KEY=sk-proj-your-key
-     ```
-
-3. **Build Docker image**:
-   ```powershell
-   docker-compose build
-   ```
-
-4. **Place documents**:
-   - Add PDF or DOCX files to `data/cder_chapters/`
-
-5. **Index documents**:
-   ```powershell
-   docker-compose run --rm cder-graphrag python index_documents.py
-   ```
-
-6. **Run the system**:
-   ```powershell
-   docker-compose run --rm cder-graphrag python main.py
-   ```
-
-### Setup without Docker (Windows - Vector-Only Mode)
-
-1. **Create virtual environment**:
-   ```powershell
-   python -m venv venv
-   venv\Scripts\activate
-   ```
-
-2. **Install dependencies**:
-   ```powershell
-   pip install -r requirements.txt
-   ```
-
-3. **Configure environment variables** (same as Docker setup)
-
-4. **Index documents**:
-   ```powershell
-   python index_documents.py
-   ```
-
-5. **Run the system**:
-   ```powershell
-   python main.py
-   ```
-
-**Note**: Neo4j connection may not work on Windows due to SSL/network issues. Use Docker for full functionality including graph and hybrid retrieval.
-
-## Usage
-
-### Web Interface (Recommended) 🎨
-
-Launch the Chainlit web interface to see all 4 responses side by side:
-
-**Using Docker:**
-```powershell
-docker-compose up frontend
+# OpenAI Configuration
+OPENAI_API_KEY=sk-proj-your-key-here
+LLM_PROVIDER=openai
 ```
 
-**Or locally:**
-```powershell
-chainlit run frontend/app.py
-```
+### Config File (`config/config.yaml`)
 
-Then open **http://localhost:8000** in your browser.
+Key settings:
+- `llm.model`: `gpt-3.5-turbo` (cheaper model)
+- `llm.temperature`: `0.3` (low for consistent answers)
+- `retrieval.vector_config.top_k`: `3` (number of results)
+- `retrieval.graph_config.max_hops`: `2` (graph depth)
 
-The web interface displays:
-- All 4 retrieval modes simultaneously
-- Performance metrics for each mode
-- Citations and source information
-- Side-by-side comparison table
+## 📖 Usage
 
-### Get All 4 Answers (Command Line)
-
-To see all 4 retrieval modes (No-RAG, Vector-Only, Graph-Only, Hybrid) side by side:
-
-**Using Docker (Neo4j works!):**
-```powershell
-docker-compose run --rm cder-graphrag python compare_all_modes.py "What is parallel computing?"
-```
-
-**Or using main.py:**
-```powershell
-docker-compose run --rm cder-graphrag python main.py --mode all-modes --query "What is parallel computing?"
-```
-
-This will show:
-- All 4 answers with full details
-- Performance metrics (latency, tokens, confidence)
-- Side-by-side comparison table
-
-### Interactive Mode
-
-Start the interactive chatbot:
+### Web Interface
 
 ```bash
+docker compose up frontend
+# Open http://localhost:8000
+```
+
+Ask questions and see all 4 retrieval modes compared side-by-side!
+
+### Command Line
+
+```bash
+# Interactive mode
 python main.py
+
+# Single query
+python main.py --mode query --query "What is parallel computing?" --retrieval hybrid
+
+# Compare all modes
+python main.py --mode compare --query "Explain MapReduce"
 ```
 
-Or explicitly:
+## 🐳 Docker Commands
 
 ```bash
-python main.py --mode interactive
+# Build
+docker compose build
+
+# Start frontend
+docker compose up frontend -d
+
+# View logs
+docker compose logs frontend -f
+
+# Run scripts
+docker compose run --rm cder-graphrag python main.py
+
+# Stop
+docker compose down
 ```
 
-Commands in interactive mode:
-- `/compare` - Compare all retrieval approaches
-- `/stats` - Show system statistics
-- `/history` - Show recent queries
-- `/exit` - Quit
+## 📊 Performance
 
-### Single Query Mode
+- **API Calls**: 4 per query (one per mode)
+- **Rate Limiting**: 2 seconds between requests
+- **Response Time**: ~2-10 seconds per query (depending on mode)
+- **Token Limits**: 8000 input, 300 output
 
-Process a single query:
+## 🛠️ Troubleshooting
 
-```bash
-python main.py --mode query --query "What is MapReduce?" --retrieval hybrid
+### Neo4j Connection Failed
+- Verify Neo4j Aura database is active
+- Check credentials in `.env`
+- Ensure URI format: `neo4j+s://xxxxx.databases.neo4j.io`
+
+### Rate Limit Errors
+- System automatically retries with exponential backoff
+- Check OpenAI dashboard for usage limits
+
+### Empty Results
+- Ensure documents are indexed: `python index_documents.py`
+- Check `data/cder_chapters/` contains PDF files
+
+## 📚 Documentation
+
+- **[Complete Documentation](DOCUMENTATION.md)** - Full system documentation
+- **[Quick Start Guide](QUICK_START.md)** - Get started quickly
+- **[Docker Setup](DOCKER_SETUP.md)** - Docker deployment guide
+- **[Usage Guide](USAGE.md)** - Detailed usage examples
+
+## 🏗️ Architecture
+
+```
+User Query
+    ↓
+CDER Chatbot (Orchestrator)
+    ↓
+┌─────────┬──────────┬──────────┬──────────┐
+│ No-RAG  │ Vector   │  Graph   │  Hybrid  │
+└─────────┴─────┬────┴─────┬────┴──────────┘
+                │          │
+            ChromaDB    Neo4j
+                │          │
+                └─────┬────┘
+                      ↓
+                  OpenAI
+                  GPT-3.5-turbo
+                      ↓
+                    Answer
 ```
 
-### Comparison Mode
-
-Compare all four retrieval approaches:
-
-```bash
-# Using Docker (recommended)
-docker-compose run --rm cder-graphrag python main.py --mode compare --query "Explain parallel algorithms"
-
-# Or get detailed comparison with all 4 answers
-docker-compose run --rm cder-graphrag python compare_all_modes.py "Explain parallel algorithms"
-```
-
-## Configuration
-
-Edit `config/config.yaml` to customize:
-
-- **Document processing**: Chunk size, overlap
-- **Embeddings**: Provider (OpenAI or Sentence-Transformers), model
-- **Retrieval**: Top-k, graph hops, fusion weights
-- **LLM**: Model, temperature, max tokens
-
-## Development
-
-### Running Tests
-
-```bash
-pytest tests/ -v --cov=src
-```
-
-### Jupyter Notebooks
-
-Explore the system interactively:
-
-```bash
-jupyter notebook notebooks/
-```
-
-## Architecture
-
-### Data Flow
-
-1. **Document Ingestion**: Load PDF/DOCX files
-2. **Chunking**: Split into 512-token chunks with 50-token overlap
-3. **Embedding**: Generate vectors (OpenAI or Sentence-Transformers)
-4. **Vector Storage**: Store in ChromaDB with metadata
-5. **Entity Extraction**: Use LLM to extract entities and relationships
-6. **Graph Construction**: Create nodes and edges in Neo4j
-7. **Query Processing**: Convert query to embedding and extract entities
-8. **Retrieval**: Execute selected retrieval strategy
-9. **Generation**: LLM synthesizes answer with retrieved context
-10. **Response**: Display answer with citations and metadata
-
-### Retrieval Strategies
-
-#### Vector-Only
-- Embeds query and searches ChromaDB for similar chunks
-- Returns top-k results ranked by cosine similarity
-
-#### Graph-Only
-- Extracts entities from query
-- Traverses Neo4j graph from seed entities
-- Collects connected chunks via relationships
-
-#### Hybrid
-- Runs vector and graph retrieval in parallel
-- Fuses results using weighted scoring
-- Deduplicates and ranks final context
-
-## Performance
-
-Expected metrics (approximate):
-- **Vector RAG Accuracy**: 60-75%
-- **Graph RAG Accuracy**: 70-80%
-- **Hybrid RAG Accuracy**: 85-90%
-- **Retrieval Latency**: <2 seconds (hybrid)
-- **Hallucination Reduction**: 80%+ vs. No-RAG baseline
-
-## Troubleshooting
-
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| Neo4j connection fails | Verify URI, username, password in `.env` |
-| Slow embeddings | Use GPU or OpenAI API (faster than local) |
-| Empty retrieval results | Check if documents are loaded and indexed |
-| High API costs | Use Sentence-Transformers for local embeddings |
-| Memory errors | Reduce chunk size or batch size in config |
-
-### Logs
-
-Check logs in `artifacts/logs/app.log` for detailed error messages.
-
-## License
+## 📝 License
 
 This project is for educational purposes as part of the CDER curriculum.
 
-## Contributing
+## 🤝 Contributing
 
 This is an academic project. For improvements or bug fixes, please follow standard Python best practices and include tests.
 
-## Acknowledgments
+---
 
-- CDER Parallel and Distributed Computing curriculum
-- Neo4j for graph database
-- ChromaDB for vector storage
-- OpenAI for LLM capabilities
-- LangChain for document processing
-
+**Version**: 1.0.0  
+**Last Updated**: November 2025

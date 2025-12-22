@@ -13,6 +13,9 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     stdin_open: true
     tty: true
     command: /bin/bash
@@ -28,6 +31,9 @@ services:
       - .env
     environment:
       - PYTHONUNBUFFERED=1
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
       - "8000:8000"
     command: chainlit run frontend/app.py --port 8000 --host 0.0.0.0

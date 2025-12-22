@@ -62,12 +62,17 @@ class CDERChatbot:
         )
         
         # Vector database
+        # Only pass API key if using OpenAI embeddings, otherwise None
+        embedding_api_key = None
+        if self.config.embeddings.provider == "openai":
+            embedding_api_key = self.runtime_config.get('openai_api_key')
+        
         self.vector_manager = VectorDBManager(
             collection_name="cder_embeddings",
             persist_dir=self.runtime_config.get('vector_db_path', './artifacts/vector_store'),
             embedding_provider=self.config.embeddings.provider,
             embedding_model=self.config.embeddings.model,
-            api_key=self.runtime_config['openai_api_key']
+            api_key=embedding_api_key
         )
         
         # Graph database (optional - system can work without it)
@@ -90,18 +95,23 @@ class CDERChatbot:
             logger.warning("To fix: Check Neo4j Aura dashboard and ensure database is active.")
         
         # Entity extractor
+        llm_provider = self.runtime_config.get('llm_provider', 'openai')
+        llm_api_key = self.runtime_config.get('llm_api_key') or self.runtime_config.get('openai_api_key')
+        
         self.entity_extractor = EntityExtractor(
             llm_model=self.config.llm.model,
-            api_key=self.runtime_config['openai_api_key']
+            api_key=llm_api_key,
+            provider=llm_provider
         )
         
         # LLM interface
         self.llm_interface = LLMInterface(
             model=self.config.llm.model,
-            api_key=self.runtime_config['openai_api_key'],
+            api_key=llm_api_key,
             temperature=self.config.llm.temperature,
             max_tokens=self.config.llm.max_tokens,
-            system_prompt=self.config.llm.system_prompt
+            system_prompt=self.config.llm.system_prompt,
+            provider=llm_provider
         )
         
         # Retrievers
