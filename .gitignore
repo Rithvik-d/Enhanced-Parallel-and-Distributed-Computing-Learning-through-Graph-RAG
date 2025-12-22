@@ -43,8 +43,8 @@ artifacts/
 logs/
 
 # Data
-data/cder_chapters/*.pdf
-data/cder_chapters/*.docx
+# data/cder_chapters/*.pdf
+# data/cder_chapters/*.docx
 data/processed/
 
 # Jupyter
